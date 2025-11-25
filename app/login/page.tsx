@@ -40,7 +40,7 @@ export default function LoginPage() {
           onSuccess: () => {
             console.log("Login successful!");
           },
-          onError: (ctx) => {
+          onError: (ctx: { error: { message: string } }) => {
             console.error("Login failed:", ctx.error);
             throw new Error(ctx.error.message || "Invalid email or password");
           },
@@ -51,6 +51,7 @@ export default function LoginPage() {
       
       // Only redirect if login was successful
       if (response.data) {
+          localStorage.setItem("betterauth_token", response.data.token);
         router.push('/dashboard');
       }
     } catch (err: any) {
