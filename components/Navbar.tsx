@@ -23,9 +23,10 @@ export default function Navbar() {
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
   
  // Hide navbar on dashboard, profile, and settings pages
-  if (pathname === '/dashboard' || pathname?.startsWith('/dashboard/profile') || pathname?.startsWith('/dashboard/settings')) {
+  if (pathname === '/dashboard' || pathname?.startsWith('/dashboard/profile') || pathname?.startsWith('/dashboard/settings')  || pathname?.startsWith('/dashboard/jobs') || pathname?.startsWith('/dashboard/applications') || pathname?.startsWith('/dashboard/notifications') ) {
     return null;
   }
+
 
   return (
     <nav

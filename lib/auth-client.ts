@@ -9,5 +9,12 @@ export const authClient = createAuthClient({
   ],
 });
 
-// Export the entire client
-export const { signIn, signUp, signOut, useSession } = authClient;
+// Export the entire client, including password reset functions
+export const { 
+  signIn, 
+  signUp, 
+  signOut, 
+  useSession, 
+  forgetPassword, 
+  resetPassword 
+} = authClient;

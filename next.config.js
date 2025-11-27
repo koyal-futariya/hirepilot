@@ -1,6 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  images: {
+    domains: ['hnvsqgux6vu15kdz.public.blob.vercel-storage.com'],
+  },
   webpack: (config) => {
     return config;
   },

@@ -1,6 +1,17 @@
 "use client";
 
-import { LogOut, Home, Briefcase, MessageSquare, Bell, User, Settings } from "lucide-react";
+import { 
+  LogOut, 
+  Home, 
+  Briefcase, 
+  MessageSquare, 
+  Bell, 
+  User, 
+  Settings, 
+  ChevronUp, 
+  Command,
+  Sparkles
+} from "lucide-react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
@@ -27,14 +38,15 @@ export function Sidebar() {
   const [profileOpen, setProfileOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
 
-  // Using session data
   const { data: session, isPending } = useSession();
 
   const userDetails = {
     name: session?.user?.name || session?.user?.email?.split("@")[0] || "User",
     email: session?.user?.email || "",
-    avatar: session?.user?.image || "/avatar.jpg", // fallback image
   };
+
+  // Extract the first letter for the avatar
+  const userInitial = userDetails.name.charAt(0).toUpperCase();
 
   function handleLogout() {
     signOut().then(() => {
@@ -42,7 +54,6 @@ export function Sidebar() {
     });
   }
 
-  // Close profile dropdown when clicking outside
   useEffect(() => {
     function handleClick(e: MouseEvent) {
       if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
@@ -57,20 +68,24 @@ export function Sidebar() {
     return () => document.removeEventListener("mousedown", handleClick);
   }, [profileOpen]);
 
-  if (isPending) {
-    // Optionally show a loading state here
-    return null;
-  }
+  if (isPending) return null;
 
   return (
     <div className="hidden md:flex md:flex-shrink-0">
-      <div className="flex flex-col w-64 h-screen border-r border-gray-200 bg-white">
+      <div className="flex flex-col w-64 h-screen bg-white border-r border-slate-200 shadow-[1px_0_0_0_rgba(0,0,0,0.02)]">
+        
         {/* Header */}
-        <div className="flex items-center h-16 px-4 border-b border-gray-200">
-          <h1 className="text-xl font-semibold text-gray-900">HirePilot</h1>
+        <div className="flex items-center h-16 px-6 border-b border-slate-100">
+          <div className="flex items-center gap-2 text-blue-600">
+            <div className="p-1.5 bg-blue-600 rounded-lg">
+              <Command className="w-5 h-5 text-white" />
+            </div>
+            <h1 className="text-xl font-bold tracking-tight text-slate-900">HirePilot</h1>
+          </div>
         </div>
+
         {/* Navigation */}
-        <div className="flex flex-col flex-grow px-4 py-4 overflow-y-auto">
+        <div className="flex flex-col flex-grow px-3 py-6 overflow-y-auto custom-scrollbar">
           <nav className="flex-1 space-y-1">
             {menuItems.map((item: MenuItem) => {
               const isActive = pathname === item.href;
@@ -78,77 +93,91 @@ export function Sidebar() {
                 <Link
                   key={item.name}
                   href={item.href}
-                  className={`flex items-center px-4 py-2.5 text-sm font-medium rounded-lg ${
-                    isActive ? "bg-blue-50 text-blue-600" : "text-gray-700 hover:bg-gray-100"
+                  className={`group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 ease-in-out ${
+                    isActive
+                      ? "bg-blue-50 text-blue-700 shadow-sm ring-1 ring-blue-100"
+                      : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
                   }`}
                 >
-                  <item.icon className="w-5 h-5 mr-3" />
+                  <item.icon
+                    className={`w-5 h-5 mr-3 transition-colors ${
+                      isActive ? "text-blue-600" : "text-slate-400 group-hover:text-slate-600"
+                    }`}
+                  />
                   {item.name}
+                  {item.name === "Notifications" && (
+                     <span className="ml-auto bg-red-100 text-red-600 py-0.5 px-2 rounded-full text-xs font-semibold">
+                       3
+                     </span>
+                  )}
                 </Link>
               );
             })}
           </nav>
         </div>
+
         {/* Footer Profile Card with Dropdown */}
-        <div className="mt-auto px-4 py-4 relative" ref={profileRef}>
-          <button
-            onClick={() => setProfileOpen((open) => !open)}
-            className="flex items-center w-full gap-3 bg-gray-100 rounded-lg p-3 hover:bg-gray-200 transition"
-          >
-            <img
-              src={userDetails.avatar}
-              alt={`${userDetails.name} avatar`}
-              className="w-10 h-10 rounded-full object-cover"
-            />
-            <div className="flex flex-col text-left">
-              <span className="text-sm font-semibold text-gray-900">{userDetails.name}</span>
-              <span className="text-xs text-gray-600">{userDetails.email}</span>
-            </div>
-            <svg
-              className={`ml-auto h-4 w-4 text-gray-500 transition-transform ${profileOpen ? "rotate-180" : ""}`}
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <path stroke="currentColor" strokeWidth="2" d="M6 9l6 6 6-6" />
-            </svg>
-          </button>
-          {profileOpen && (
-            <div className="absolute left-0 bottom-16 w-64 bg-white border border-gray-200 rounded-xl shadow-lg z-20">
-              <div className="p-4 flex items-center gap-3 border-b border-gray-100">
-                <img
-                  src={userDetails.avatar}
-                  alt={`${userDetails.name} avatar`}
-                  className="w-10 h-10 rounded-full object-cover"
-                />
-                <div>
-                  <span className="block text-sm font-semibold text-gray-900">{userDetails.name}</span>
-                  <span className="block text-xs text-gray-600">{userDetails.email}</span>
+        <div className="mt-auto px-3 py-4 relative" ref={profileRef}>
+          <div className="relative">
+            {profileOpen && (
+              <div className="absolute bottom-full left-0 right-0 mb-3 w-full bg-white border border-slate-100 rounded-xl shadow-xl ring-1 ring-black/5 transform transition-all duration-200 origin-bottom z-50">
+                <div className="p-4 border-b border-slate-50 bg-slate-50/50 rounded-t-xl">
+                  <div className="flex items-center gap-3">
+                    {/* Dropdown Avatar: Initial */}
+                    <div className="flex items-center justify-center w-10 h-10 rounded-full bg-blue-100 text-blue-700 border border-blue-200 shadow-sm">
+                      <span className="text-sm font-bold">{userInitial}</span>
+                    </div>
+                    
+                    <div className="overflow-hidden">
+                      <span className="block text-sm font-semibold text-slate-900 truncate">
+                        {userDetails.name}
+                      </span>
+                      <span className="block text-xs text-slate-500 truncate">
+                        {userDetails.email}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-1.5 space-y-0.5">
+                  
+                  
+                  <div className="h-px bg-slate-100 my-1 mx-2" />
+                  <button
+                    className="w-full flex items-center px-3 py-2 text-sm font-medium text-red-600 rounded-lg hover:bg-red-50 transition-colors"
+                    onClick={handleLogout}
+                  >
+                    <LogOut className="w-4 h-4 mr-3" />
+                    Log out
+                  </button>
                 </div>
               </div>
-              <div className="divide-y divide-gray-100">
-                <button className="w-full flex items-center px-4 py-3 text-sm hover:bg-gray-50 gap-3">
-                  {/* Place holder icon */}
-                  <svg width={18} height={18} className="text-gray-500"><path d="M6 10.5V9a6 6 0 0112 0v1.5"/></svg>
-                  Upgrade to Pro
-                </button>
-                <button className="w-full flex items-center px-4 py-3 text-sm hover:bg-gray-50 gap-3">
-                  <Settings className="w-4 h-4 text-gray-500" />
-                  Account
-                </button>
-                <button className="w-full flex items-center px-4 py-3 text-sm hover:bg-gray-50 gap-3">
-                  <Bell className="w-4 h-4 text-gray-500" />
-                  Notifications
-                </button>
-                <button
-                  className="w-full flex items-center px-4 py-3 text-sm text-red-600 hover:bg-red-50 gap-3"
-                  onClick={handleLogout}
-                >
-                  <LogOut className="w-4 h-4" />
-                  Log out
-                </button>
+            )}
+
+            <button
+              onClick={() => setProfileOpen((open) => !open)}
+              className={`flex items-center w-full gap-3 p-2 rounded-xl border transition-all duration-200 ${
+                profileOpen 
+                  ? "bg-white border-blue-200 ring-2 ring-blue-100 shadow-sm" 
+                  : "bg-white border-transparent hover:bg-slate-50 hover:border-slate-200"
+              }`}
+            >
+              {/* Footer Avatar: Initial */}
+              <div className="flex items-center justify-center w-9 h-9 rounded-full bg-blue-100 text-blue-700 border border-blue-200 shrink-0">
+                 <span className="text-sm font-bold">{userInitial}</span>
               </div>
-            </div>
-          )}
+              
+              <div className="flex flex-col text-left flex-1 overflow-hidden">
+                <span className="text-sm font-medium text-slate-700 truncate">{userDetails.name}</span>
+                <span className="text-xs text-slate-500 truncate">View Profile</span>
+              </div>
+              <ChevronUp 
+                className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${
+                  profileOpen ? "" : "rotate-180"
+                }`} 
+              />
+            </button>
+          </div>
         </div>
       </div>
     </div>

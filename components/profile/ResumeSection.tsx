@@ -1,9 +1,12 @@
-'use client';
+"use client";
 
-
-import { useState, useRef, ChangeEvent } from 'react';
-import { TrashIcon, DocumentTextIcon, CloudArrowUpIcon } from '@heroicons/react/24/outline';
-
+import { useState, useRef, ChangeEvent, useEffect } from "react";
+import { authClient } from "@/lib/auth-client";
+import {
+  TrashIcon,
+  DocumentTextIcon,
+  CloudArrowUpIcon,
+} from "@heroicons/react/24/outline";
 
 interface Resume {
   id: string;
@@ -11,151 +14,247 @@ interface Resume {
   url: string;
   size: number;
   lastModified: number;
+  isUploaded: boolean;
   file?: File;
 }
 
+// Type guard
+function hasFile(resume: Resume | null): resume is Resume & { file: File } {
+  return !!resume && "file" in resume && resume.file !== undefined;
+}
 
 export function ResumeSection() {
-  const currentUserId = 'user-unique-id'; // Replace with real user ID from your auth
-
+  const session = authClient.useSession();
+  const currentUserId = session.data?.user?.id || "";
+  const isSessionLoading = session.isPending;
 
   const [resume, setResume] = useState<Resume | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL;
 
-  const formatFileSize = (bytes: number): string => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  };
+  // Fetch resume from profile
+  useEffect(() => {
+    if (!currentUserId || !API_BASE) return;
 
+    const fetchResume = async () => {
+      try {
+        const response = await fetch(
+          `${API_BASE}/api/get-profile?userId=${currentUserId}`
+        );
+        if (!response.ok) return;
 
-  const formatDate = (timestamp: number): string => {
-    return new Date(timestamp).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
-  };
+        const data = await response.json();
+        if (data.profile?.resumeUrl) {
+          const resumeData: Resume = {
+            id: "resume-" + currentUserId,
+            name:
+              data.profile.resumeUrl.split("/").pop() || "resume.pdf",
+            url: data.profile.resumeUrl,
+            size: 0,
+            lastModified: Date.now(),
+            isUploaded: true,
+          };
 
+          setResume(resumeData);
+
+          if (
+            data.profile.resumeUrl.toLowerCase().endsWith(".pdf")
+          ) {
+            setPreviewUrl(data.profile.resumeUrl);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching resume:", error);
+      }
+    };
+
+    fetchResume();
+  }, [currentUserId, API_BASE]);
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-
-    // Validate file type and size
     const validTypes = [
-      'application/pdf',
-      'application/msword',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      "application/pdf",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     ];
+
     if (!validTypes.includes(file.type)) {
-      alert('Please upload a PDF or Word document');
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      alert('File size must be less than 5MB');
+      alert("Please upload a PDF or Word document");
       return;
     }
 
+    if (file.size > 5 * 1024 * 1024) {
+      alert("File size must be less than 5MB");
+      return;
+    }
 
     const fileUrl = URL.createObjectURL(file);
-    setResume({
+    const newResume: Resume = {
       id: Date.now().toString(),
       name: file.name,
       url: fileUrl,
       size: file.size,
       lastModified: file.lastModified,
       file,
-    });
+      isUploaded: false,
+    };
+    setResume(newResume);
 
-
-    setPreviewUrl(file.type === 'application/pdf' ? fileUrl : null);
-
+    setPreviewUrl(
+      file.type === "application/pdf" ? fileUrl : null
+    );
 
     if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+      fileInputRef.current.value = "";
     }
   };
 
-
   const handleUpload = async () => {
-    if (!resume?.file) return;
+    if (!resume?.file || !API_BASE) return;
     setIsUploading(true);
-
 
     try {
       const formData = new FormData();
-      formData.append('resume', resume.file);
-      formData.append('userId', currentUserId);
+      formData.append("resume", resume.file);
+      formData.append("userId", currentUserId);
 
+      const uploadResponse = await fetch(
+        `${API_BASE}/api/upload-resume`,
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
 
-      const response = await fetch('http://localhost:4000/api/upload-resume', {
-        method: 'POST',
-        body: formData,
-      });
-
-
-      const data = await response.json();
-
-
-      if (data.success) {
-        alert('Resume uploaded successfully!');
-        setResume((prev) =>
-          prev ? { ...prev, url: data.url, name: data.filename } : prev,
-        );
-      } else {
-        alert('Upload failed: ' + (data.error || 'Unknown error'));
+      if (!uploadResponse.ok) {
+        const errorData = await uploadResponse
+          .json()
+          .catch(() => ({}));
+        throw new Error(errorData.error || "Upload failed");
       }
+
+      const uploadData = await uploadResponse.json();
+
+      // Persist resumeUrl on profile
+      const profileResponse = await fetch(
+        `${API_BASE}/api/save-profile`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: currentUserId,
+            resumeUrl: uploadData.url,
+          }),
+        }
+      );
+
+      if (!profileResponse.ok) {
+        const errorData = await profileResponse
+          .json()
+          .catch(() => ({}));
+        throw new Error(errorData.error || "Failed to update profile");
+      }
+
+      setResume((prev) =>
+        prev
+          ? {
+              ...prev,
+              url: uploadData.url,
+              isUploaded: true,
+              file: undefined,
+              name: uploadData.filename || "resume.pdf",
+            }
+          : null
+      );
+
+      alert("Resume uploaded successfully!");
     } catch (error) {
-      console.error(error);
-      alert('Failed to upload resume. Please try again.');
+      console.error("Upload error:", error);
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Failed to upload resume";
+      alert(`Error: ${errorMessage}`);
     } finally {
       setIsUploading(false);
     }
   };
 
-
   const handleDelete = async () => {
-    if (!resume) return;
-    if (!window.confirm('Are you sure you want to delete this resume?')) return;
-
+    if (!resume || !API_BASE) return;
+    if (
+      !window.confirm(
+        "Are you sure you want to delete your resume?"
+      )
+    )
+      return;
 
     try {
-      const response = await fetch('http://localhost:4000/api/delete-resume', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ filename: resume.name, userId: currentUserId }),
-      });
-
-
-      const data = await response.json();
-
-
-      if (data.success) {
-        alert('Resume deleted');
-        if (previewUrl) {
-          URL.revokeObjectURL(previewUrl);
+      // Clear resumeUrl from profile
+      const response = await fetch(
+        `${API_BASE}/api/save-profile`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: currentUserId,
+            resumeUrl: null,
+          }),
         }
-        setResume(null);
-        setPreviewUrl(null);
-      } else {
-        alert('Failed to delete resume: ' + (data.error || 'Unknown error'));
+      );
+
+      if (!response.ok) {
+        const errorData = await response
+          .json()
+          .catch(() => ({}));
+        throw new Error(errorData.error || "Failed to update profile");
       }
+
+      // Inform backend to delete from Blob (optional implementation)
+      const deleteResponse = await fetch(
+        `${API_BASE}/api/delete-resume`,
+        {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            filename: resume.name,
+            userId: currentUserId,
+          }),
+        }
+      );
+
+      if (!deleteResponse.ok) {
+        const errorData = await deleteResponse
+          .json()
+          .catch(() => ({}));
+        throw new Error(errorData.error || "Failed to delete file");
+      }
+
+      if (previewUrl?.startsWith("blob:")) {
+        URL.revokeObjectURL(previewUrl);
+      }
+      setResume(null);
+      setPreviewUrl(null);
+      alert("Resume deleted successfully");
     } catch (error) {
-      alert('Error deleting resume');
+      console.error("Delete error:", error);
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Unknown error";
+      alert(`Error deleting resume: ${errorMessage}`);
     }
   };
 
-
   const handleDownload = () => {
     if (!resume) return;
-    const link = document.createElement('a');
+    const link = document.createElement("a");
     link.href = resume.url;
     link.download = resume.name;
     document.body.appendChild(link);
@@ -163,21 +262,44 @@ export function ResumeSection() {
     document.body.removeChild(link);
   };
 
+  const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return "0 Bytes";
+    const k = 1024;
+    const sizes = ["Bytes", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return (
+      parseFloat((bytes / Math.pow(k, i)).toFixed(2)) +
+      " " +
+      sizes[i]
+    );
+  };
+
+  const formatDate = (timestamp: number): string => {
+    return new Date(timestamp).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  };
+
+  if (isSessionLoading) {
+    return <div>Loading...</div>;
+  }
 
   return (
     <section className="mt-8">
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-xl font-semibold">Resume</h3>
-        {resume && (
+        {hasFile(resume) && !isUploading && (
           <button
-            onClick={handleDelete}
-            className="flex items-center text-sm text-red-600 hover:text-red-800"
+            onClick={handleUpload}
+            className="mt-0 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
           >
-            <TrashIcon className="h-4 w-4 mr-1" />
-            Delete Resume
+            Save Resume
           </button>
         )}
       </div>
+
       <div className="bg-white p-6 rounded-lg border border-gray-200">
         {resume ? (
           <div className="space-y-6">
@@ -187,96 +309,77 @@ export function ResumeSection() {
                   <DocumentTextIcon className="h-6 w-6 text-blue-600" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-medium text-gray-900">{resume.name}</h4>
+                  <h4 className="text-sm font-medium text-gray-900">
+                    {resume.name}
+                  </h4>
                   <p className="text-xs text-gray-500 mt-1">
-                    {formatFileSize(resume.size)} • Updated {formatDate(resume.lastModified)}
+                    {formatFileSize(resume.size)} • Updated{" "}
+                    {formatDate(resume.lastModified)}
                   </p>
                 </div>
               </div>
+
               <div className="flex space-x-3 mt-4 sm:mt-0">
-                {resume.file?.type === 'application/pdf' && (
+                {resume.url
+                  .toLowerCase()
+                  .endsWith(".pdf") && (
                   <a
                     href={resume.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors text-sm font-medium"
+                    className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                   >
-                    Preview
+                    View PDF
                   </a>
                 )}
                 <button
                   onClick={handleDownload}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm font-medium"
+                  className="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                 >
                   Download
                 </button>
+                <button
+                  onClick={handleDelete}
+                  className="inline-flex items-center px-3 py-1.5 border border-red-200 shadow-sm text-xs font-medium rounded-md text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                >
+                  <TrashIcon className="h-4 w-4 mr-1" />
+                  Delete
+                </button>
               </div>
             </div>
-            {previewUrl && (
-              <div className="mt-4">
-                <h4 className="text-sm font-medium text-gray-700 mb-2">Preview</h4>
-                <div className="border rounded-lg overflow-hidden">
-                  <iframe
-                    src={`${previewUrl}#toolbar=0&navpanes=0`}
-                    className="w-full h-[500px]"
-                    title="Resume Preview"
-                  />
-                </div>
+          </div>
+        ) : (
+          <div className="text-center">
+            <div className="mt-2 flex justify-center text-sm text-gray-600">
+              <div className="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none">
+                <label
+                  htmlFor="resume-upload"
+                  className="cursor-pointer"
+                >
+                  <CloudArrowUpIcon className="mx-auto h-12 w-12 text-gray-400" />
+                  <p className="mt-1">Upload a file</p>
+                  <p className="text-xs text-gray-500">
+                    PDF or Word document (max 5MB)
+                  </p>
+                </label>
+                <input
+                  id="resume-upload"
+                  name="resume-upload"
+                  type="file"
+                  className="sr-only"
+                  onChange={handleFileChange}
+                  accept=".pdf,.doc,.docx"
+                  ref={fileInputRef}
+                />
+              </div>
+            </div>
+            {isUploading && (
+              <div className="mt-4 text-sm text-gray-600">
+                Uploading...
               </div>
             )}
           </div>
-        ) : (
-          <div className="text-center py-8">
-            <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-100">
-              <DocumentTextIcon className="h-6 w-6 text-blue-600" />
-            </div>
-            <h3 className="mt-2 text-sm font-medium text-gray-900">No resume uploaded</h3>
-            <p className="mt-1 text-sm text-gray-500">Upload your resume to get started</p>
-          </div>
         )}
-        <div className="mt-6">
-          <div className="flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
-            <div className="space-y-1 text-center">
-              <div className="flex text-sm text-gray-600 justify-center">
-                <label
-                  htmlFor="resume-upload"
-                  className="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none"
-                >
-                  <div className="flex flex-col items-center">
-                    <CloudArrowUpIcon className="mx-auto h-10 w-10 text-gray-400" />
-                    <span className="mt-2">Upload a file</span>
-                    <p className="text-xs text-gray-500 mt-1">
-                      PDF, DOC, or DOCX up to 5MB
-                    </p>
-                  </div>
-                  <input
-                    id="resume-upload"
-                    type="file"
-                    ref={fileInputRef}
-                    className="sr-only"
-                    accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                    onChange={handleFileChange}
-                    name="resume"
-                  />
-                </label>
-              </div>
-            </div>
-          </div>
-          {resume && (
-            <div className="mt-4 flex justify-end">
-              <button
-                type="button"
-                onClick={handleUpload}
-                disabled={isUploading}
-                className={`inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
-                  isUploading ? 'opacity-70 cursor-not-allowed' : ''
-                }`}
-              >
-                {isUploading ? 'Uploading...' : 'Save Changes'}
-              </button>
-            </div>
-          )}
-        </div>
       </div>
     </section>
   );

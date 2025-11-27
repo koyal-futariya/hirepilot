@@ -16,7 +16,7 @@ const SocialButton = ({ icon, children }: { icon: SocialIcon, children: React.Re
     <Button 
       variant="outline" 
       type="button" 
-      className="w-full bg-gray-800 border-gray-700 text-white hover:bg-gray-700"
+      className="w-full bg-white border-gray-200 text-gray-700 hover:bg-gray-50"
     >
       {icon === 'google' ? (
         <Icons.google className="mr-2 h-4 w-4" />
@@ -87,11 +87,11 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-black p-4">
-      <Card className="w-full max-w-md bg-gray-900 border-gray-800">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4 pt-30">
+      <Card className="w-full max-w-md bg-white border-gray-200">
         <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold text-white">Create an account</CardTitle>
-          <CardDescription className="text-gray-300">
+          <CardTitle className="text-2xl font-bold text-gray-900">Create an account</CardTitle>
+          <CardDescription className="text-gray-600">
             Enter your information to create an account
           </CardDescription>
         </CardHeader>
@@ -106,7 +106,7 @@ export default function RegisterPage() {
             
             <div className="space-y-4">
               <div>
-                <Label htmlFor="name" className="text-white">Full Name</Label>
+                <Label htmlFor="name" className="text-gray-700">Full Name</Label>
                 <Input
                   id="name"
                   type="text"
@@ -114,12 +114,12 @@ export default function RegisterPage() {
                   onChange={handleChange}
                   placeholder="John Doe"
                   required
-                  className="bg-gray-800 border-gray-700 text-white placeholder-gray-500"
+                  className="bg-white border-gray-300 text-gray-900 placeholder-gray-400 focus:border-black focus:ring-black"
                 />
               </div>
               
               <div>
-                <Label htmlFor="email" className="text-white">Email</Label>
+                <Label htmlFor="email" className="text-gray-700">Email</Label>
                 <Input
                   id="email"
                   type="email"
@@ -127,34 +127,34 @@ export default function RegisterPage() {
                   onChange={handleChange}
                   placeholder="name@example.com"
                   required
-                  className="bg-gray-800 border-gray-700 text-white placeholder-gray-500"
+                  className="bg-white border-gray-300 text-gray-900 placeholder-gray-400 focus:border-black focus:ring-black"
                 />
               </div>
               
               <div className="space-y-3">
-                <Label className="text-white block mb-2">Gender</Label>
+                <Label className="text-gray-700 block mb-2">Gender</Label>
                 <RadioGroup 
                   value={form.gender}
                   onValueChange={(value) => setForm(prev => ({ ...prev, gender: value }))}
                   className="flex gap-6 px-1"
                 >
                   <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="male" id="male" />
-                    <Label htmlFor="male" className="text-white">Male</Label>
+                    <RadioGroupItem value="male" id="male" className="text-black" />
+                    <Label htmlFor="male" className="text-gray-700">Male</Label>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="female" id="female" />
-                    <Label htmlFor="female" className="text-white">Female</Label>
+                    <RadioGroupItem value="female" id="female" className="text-black" />
+                    <Label htmlFor="female" className="text-gray-700">Female</Label>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="other" id="other" />
-                    <Label htmlFor="other" className="text-white">Other</Label>
+                    <RadioGroupItem value="other" id="other" className="text-black" />
+                    <Label htmlFor="other" className="text-gray-700">Other</Label>
                   </div>
                 </RadioGroup>
               </div>
               
               <div>
-                <Label htmlFor="password" className="text-white">Password</Label>
+                <Label htmlFor="password" className="text-gray-700">Password</Label>
                 <Input
                   id="password"
                   type="password"
@@ -163,13 +163,13 @@ export default function RegisterPage() {
                   placeholder="••••••••"
                   required
                   minLength={8}
-                  className="bg-gray-800 border-gray-700 text-white placeholder-gray-500"
+                  className="bg-white border-gray-300 text-gray-900 placeholder-gray-400 focus:border-black focus:ring-black"
                 />
-                <p className="text-xs text-gray-400 mt-1">Must be at least 8 characters</p>
+                <p className="text-xs text-gray-500 mt-1">Must be at least 8 characters</p>
               </div>
               
               <div>
-                <Label htmlFor="confirmPassword" className="text-white">Confirm Password</Label>
+                <Label htmlFor="confirmPassword" className="text-gray-700">Confirm Password</Label>
                 <Input
                   id="confirmPassword"
                   type="password"
@@ -177,7 +177,7 @@ export default function RegisterPage() {
                   onChange={handleChange}
                   placeholder="••••••••"
                   required
-                  className="bg-gray-800 border-gray-700 text-white placeholder-gray-500"
+                  className="bg-white border-gray-300 text-gray-900 placeholder-gray-400 focus:border-black focus:ring-black"
                 />
               </div>
             </div>
@@ -187,7 +187,7 @@ export default function RegisterPage() {
             <Button 
               type="submit" 
               disabled={isLoading}
-              className="w-full bg-yellow-500 hover:bg-yellow-600 text-black font-medium"
+              className="w-full bg-black text-white hover:bg-gray-800 focus:ring-2 focus:ring-black focus:ring-offset-2"
             >
               {isLoading ? (
                 <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />
@@ -197,10 +197,10 @@ export default function RegisterPage() {
 
             <div className="relative w-full">
               <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t border-gray-700" />
+                <span className="w-full border-t border-gray-200" />
               </div>
               <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-gray-900 px-2 text-gray-400">
+                <span className="bg-white px-2 text-gray-500">
                   Or continue with
                 </span>
               </div>
